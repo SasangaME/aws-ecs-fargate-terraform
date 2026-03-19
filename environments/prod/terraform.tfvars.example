@@ -1,0 +1,11 @@
+# Example overrides for the PRODUCTION environment
+aws_region      = "us-east-1"
+environment     = "prod"
+vpc_cidr        = "10.2.0.0/16"
+public_subnets  = ["10.2.1.0/24", "10.2.2.0/24"]
+private_subnets = ["10.2.3.0/24", "10.2.4.0/24"]
+
+# Scale up Production
+desired_count   = 3
+cpu            = "512"
+memory         = "1024"

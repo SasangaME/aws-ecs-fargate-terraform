@@ -50,8 +50,8 @@ The workspace is split into **Environments** and **Modules** to maximize code re
 - **`network/`**: Constructs a robust VPC framework. It provisions 2 public subnets for the load balancer and 2 private subnets for your Fargate compute. It also supplies the NAT gateways ensuring your private tasks maintain outbound internet access.
 - **`alb/`**: Sets up the Application Load Balancer mapped directly to the public subnets. This serves as the single point of entry for your application.
 - **`ecs-cluster/`**: Configures the underlying Amazon ECS Cluster namespace with CloudWatch Container Insights enabled out of the box for deep observability.
-- **`ecs-service/`**: (Pending implementation) Defines the actual Docker container bindings, Fargate configuration (vCPU, Memory), and mounts the service to the Target Group of the ALB.
-- **`iam/`**: (Pending implementation) Manages the execution role (required to pull Docker images) and the task role (required for the application itself to trigger AWS APIs).
+- **`ecs-service/`**: Defines the actual Docker container bindings, Fargate configuration (vCPU, Memory), and mounts the service to the Target Group of the ALB.
+- **`iam/`**: Manages the execution role (required to pull Docker images) and the task role (required for the application itself to trigger AWS APIs).
 
 ## Getting Started
 
@@ -84,3 +84,21 @@ To deploy a specific environment (e.g., `dev`):
    ```bash
    terraform apply
    ```
+
+### Managing the `environment` Variable
+The `environment` variable is used to prefix resource names and tag items (e.g., `dev-ecs-task-role`). There are several ways to provide or override this value:
+
+- **Folder-specific Defaults**: Each environment folder (`environments/dev`, `environments/prod`, etc.) already has a default value defined in its `variables.tf`.
+- **Using `.tfvars` file (Recommended)**: Create or edit `terraform.tfvars` within the environment directory:
+  ```hcl
+  environment = "dev"
+  ```
+- **Command Line override**:
+  ```bash
+  terraform apply -var="environment=dev"
+  ```
+- **Environment Variable**:
+  ```bash
+  export TF_VAR_environment="dev"
+  terraform apply
+  ```

@@ -13,3 +13,7 @@ output "alb_dns_name" {
 output "security_group_id" {
   value = aws_security_group.alb.id
 }
+
+output "listener_arn" {
+  value = aws_lb_listener.http.arn
+}
