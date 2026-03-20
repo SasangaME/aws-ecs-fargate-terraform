@@ -25,12 +25,13 @@ module "network" {
   public_subnets     = var.public_subnets
   private_subnets    = var.private_subnets
   availability_zones = var.availability_zones
+  single_nat_gateway = true
 }
 
 module "ecs_cluster" {
   source       = "../../modules/ecs-cluster"
   environment  = var.environment
-  cluster_name = "fargate-cluster"
+  cluster_name = var.cluster_name
 }
 
 module "alb" {
@@ -46,16 +47,18 @@ module "iam" {
 }
 
 module "ecs_service" {
-  source                = "../../modules/ecs-service"
-  environment           = var.environment
-  cluster_id            = module.ecs_cluster.cluster_id
-  vpc_id                = module.network.vpc_id
-  private_subnets       = module.network.private_subnets
-  alb_security_group_id = module.alb.security_group_id
-  listener_arn          = module.alb.listener_arn
-  execution_role_arn    = module.iam.execution_role_arn
-  task_role_arn         = module.iam.task_role_arn
-  container_image       = "public.ecr.aws/docker/library/httpd:latest"
-  container_port        = 80
+  source                 = "../../modules/ecs-service"
+  environment            = var.environment
+  aws_region             = var.aws_region
+  cluster_id             = module.ecs_cluster.cluster_id
+  vpc_id                 = module.network.vpc_id
+  private_subnets        = module.network.private_subnets
+  alb_security_group_id  = module.alb.security_group_id
+  listener_arn           = module.alb.listener_arn
+  execution_role_arn     = module.iam.execution_role_arn
+  task_role_arn          = module.iam.task_role_arn
+  container_image        = var.container_image
+  container_port         = var.container_port
+  log_retention_days     = var.log_retention_days
+  listener_rule_priority = var.listener_rule_priority
 }
-

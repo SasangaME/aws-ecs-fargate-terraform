@@ -6,7 +6,4 @@ resource "aws_ecs_cluster" "main" {
     value = "enabled"
   }
 
-  tags = {
-    Environment = var.environment
-  }
 }

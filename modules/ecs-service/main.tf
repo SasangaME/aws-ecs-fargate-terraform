@@ -1,11 +1,7 @@
 # --- CloudWatch Logs ---
 resource "aws_cloudwatch_log_group" "main" {
   name              = "/ecs/${var.environment}/${var.container_name}"
-  retention_in_days = 7
-
-  tags = {
-    Environment = var.environment
-  }
+  retention_in_days = var.log_retention_days
 }
 
 # --- Target Group for ALB ---
@@ -24,16 +20,12 @@ resource "aws_lb_target_group" "main" {
     interval            = 30
     matcher             = "200"
   }
-
-  tags = {
-    Environment = var.environment
-  }
 }
 
 # --- Listener Rule ---
 resource "aws_lb_listener_rule" "main" {
   listener_arn = var.listener_arn
-  priority     = 100
+  priority     = var.listener_rule_priority
 
   action {
     type             = "forward"
@@ -68,8 +60,7 @@ resource "aws_security_group" "ecs_tasks" {
   }
 
   tags = {
-    Name        = "${var.environment}-ecs-tasks-sg"
-    Environment = var.environment
+    Name = "${var.environment}-ecs-tasks-sg"
   }
 }
 
@@ -98,7 +89,7 @@ resource "aws_ecs_task_definition" "main" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.main.name
-          "awslogs-region"        = "us-east-1" # Hardcoded for now, ideal to pass via vars
+          "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs"
         }
       }

@@ -73,3 +73,20 @@ variable "listener_arn" {
   description = "The ARN of the ALB Listener"
   type        = string
 }
+
+variable "aws_region" {
+  description = "AWS region used for CloudWatch log configuration"
+  type        = string
+}
+
+variable "log_retention_days" {
+  description = "Number of days to retain CloudWatch logs"
+  type        = number
+  default     = 7
+}
+
+variable "listener_rule_priority" {
+  description = "Priority for the ALB listener rule (unique per listener)"
+  type        = number
+  default     = 100
+}

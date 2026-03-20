@@ -15,9 +15,6 @@ resource "aws_iam_role" "ecs_execution_role" {
   name               = "${var.environment}-ecs-execution-role"
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_trust_policy.json
 
-  tags = {
-    Environment = var.environment
-  }
 }
 
 # Attach common Amazon managed policy for execution
@@ -32,9 +29,6 @@ resource "aws_iam_role" "ecs_task_role" {
   name               = "${var.environment}-ecs-task-role"
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_trust_policy.json
 
-  tags = {
-    Environment = var.environment
-  }
 }
 
 # Note: In a real scenario, you'd attach specific permissions here 

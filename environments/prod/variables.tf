@@ -34,21 +34,50 @@ variable "availability_zones" {
   default     = ["us-east-1a", "us-east-1b"]
 }
 
-# Higher defaults for Production
+variable "cluster_name" {
+  description = "Name of the ECS cluster"
+  type        = string
+  default     = "fargate-cluster"
+}
+
+variable "container_image" {
+  description = "Docker image URI for the ECS task"
+  type        = string
+  default     = "public.ecr.aws/docker/library/httpd:latest"
+}
+
+variable "container_port" {
+  description = "Port exposed by the container"
+  type        = number
+  default     = 80
+}
+
 variable "desired_count" {
-  description = "Baseline number of Production tasks"
+  description = "Number of ECS tasks to run"
   type        = number
   default     = 3
 }
 
 variable "cpu" {
-  description = "Production Fargate CPU (larger units)"
+  description = "Fargate CPU units"
   type        = string
-  default     = "512" # Overrides dev/staging defaults of 256
+  default     = "512"
 }
 
 variable "memory" {
-  description = "Production memory"
+  description = "Fargate memory in MB"
   type        = string
-  default     = "1024" # Overrides dev/staging defaults of 512
+  default     = "1024"
+}
+
+variable "log_retention_days" {
+  description = "Number of days to retain CloudWatch logs"
+  type        = number
+  default     = 30
+}
+
+variable "listener_rule_priority" {
+  description = "Priority for the ALB listener rule"
+  type        = number
+  default     = 100
 }

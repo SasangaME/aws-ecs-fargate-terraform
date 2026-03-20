@@ -25,8 +25,7 @@ resource "aws_security_group" "alb" {
   }
 
   tags = {
-    Name        = "${var.environment}-alb-sg"
-    Environment = var.environment
+    Name = "${var.environment}-alb-sg"
   }
 }
 
@@ -37,9 +36,6 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnets
 
-  tags = {
-    Environment = var.environment
-  }
 }
 
 resource "aws_lb_listener" "http" {

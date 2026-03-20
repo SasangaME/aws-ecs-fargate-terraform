@@ -4,8 +4,7 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
 
   tags = {
-    Name        = "${var.environment}-vpc"
-    Environment = var.environment
+    Name = "${var.environment}-vpc"
   }
 }
 
@@ -18,8 +17,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "${var.environment}-public-subnet-${count.index + 1}"
-    Environment = var.environment
+    Name = "${var.environment}-public-subnet-${count.index + 1}"
   }
 }
 
@@ -30,8 +28,7 @@ resource "aws_subnet" "private" {
   availability_zone = element(var.availability_zones, count.index)
 
   tags = {
-    Name        = "${var.environment}-private-subnet-${count.index + 1}"
-    Environment = var.environment
+    Name = "${var.environment}-private-subnet-${count.index + 1}"
   }
 }
 
@@ -39,8 +36,7 @@ resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name        = "${var.environment}-igw"
-    Environment = var.environment
+    Name = "${var.environment}-igw"
   }
 }
 
@@ -53,8 +49,7 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name        = "${var.environment}-public-rt"
-    Environment = var.environment
+    Name = "${var.environment}-public-rt"
   }
 }
 
@@ -65,23 +60,21 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_eip" "nat" {
-  count  = length(var.public_subnets)
+  count  = var.single_nat_gateway ? 1 : length(var.public_subnets)
   domain = "vpc"
 
   tags = {
-    Name        = "${var.environment}-nat-eip-${count.index + 1}"
-    Environment = var.environment
+    Name = "${var.environment}-nat-eip-${count.index + 1}"
   }
 }
 
 resource "aws_nat_gateway" "main" {
-  count         = length(var.public_subnets)
-  allocation_id = element(aws_eip.nat[*].id, count.index)
-  subnet_id     = element(aws_subnet.public[*].id, count.index)
+  count         = var.single_nat_gateway ? 1 : length(var.public_subnets)
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[count.index].id
 
   tags = {
-    Name        = "${var.environment}-nat-${count.index + 1}"
-    Environment = var.environment
+    Name = "${var.environment}-nat-${count.index + 1}"
   }
 }
 
@@ -91,12 +84,11 @@ resource "aws_route_table" "private" {
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = element(aws_nat_gateway.main[*].id, count.index)
+    nat_gateway_id = var.single_nat_gateway ? aws_nat_gateway.main[0].id : aws_nat_gateway.main[count.index].id
   }
 
   tags = {
-    Name        = "${var.environment}-private-rt-${count.index + 1}"
-    Environment = var.environment
+    Name = "${var.environment}-private-rt-${count.index + 1}"
   }
 }
 

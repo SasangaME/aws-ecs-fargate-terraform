@@ -1,11 +1,15 @@
-# Example overrides for the PRODUCTION environment
-aws_region      = "us-east-1"
-environment     = "prod"
-vpc_cidr        = "10.2.0.0/16"
-public_subnets  = ["10.2.1.0/24", "10.2.2.0/24"]
-private_subnets = ["10.2.3.0/24", "10.2.4.0/24"]
-
-# Scale up Production
-desired_count   = 3
-cpu            = "512"
-memory         = "1024"
+# Example overrides for the PROD environment
+aws_region             = "us-east-1"
+environment            = "prod"
+vpc_cidr               = "10.2.0.0/16"
+public_subnets         = ["10.2.1.0/24", "10.2.2.0/24"]
+private_subnets        = ["10.2.3.0/24", "10.2.4.0/24"]
+availability_zones     = ["us-east-1a", "us-east-1b"]
+cluster_name           = "fargate-cluster"
+container_image        = "public.ecr.aws/docker/library/httpd:latest"
+container_port         = 80
+desired_count          = 3
+cpu                    = "512"
+memory                 = "1024"
+log_retention_days     = 30
+listener_rule_priority = 100
