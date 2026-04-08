@@ -1,6 +1,6 @@
 # AWS ECS Fargate Terraform Infrastructure
 
-An industry-standard, modular Terraform project designed to provision a highly available AWS ECS Fargate application. The infrastructure is segmented into multiple isolated environments (`dev`, `staging`, `prod`) to enable safe progression and testing of infrastructure changes.
+An industry-standard, modular Terraform project designed to provision a highly available AWS ECS Fargate application. Uses **Terragrunt** to eliminate environment duplication and manage remote state DRY. The infrastructure is segmented into multiple isolated environments (`dev`, `staging`, `prod`) to enable safe progression and testing of infrastructure changes.
 
 ## Architecture
 
@@ -30,20 +30,30 @@ graph TD
 
 ## Directory Structure
 
-The workspace is split into **Environments** and **Modules** to maximize code reusability and isolate state between deployments.
+The workspace is split into **Infrastructure** (shared Terraform root module), **Live** (Terragrunt environment configs), and **Modules** (reusable infrastructure components).
 
 ```text
 .
-├── environments/
-│   ├── dev/       # Development-specific variable definitions and state
-│   ├── staging/   # Staging-specific variable definitions and state
-│   └── prod/      # Production-specific variable definitions and state
-└── modules/
-    ├── alb/           # Application Load Balancer, Target Groups, and Security Groups
-    ├── ecs-cluster/   # Core ECS Cluster with Container Insights
-    ├── ecs-service/   # Fargate Service, Task Definitions, and Container configurations
-    ├── iam/           # Task Execution and Task Roles for ECS permissions
-    └── network/       # High-availability VPC, Subnets, NAT Gateways, and Route Tables
+├── infrastructure/        # Shared Terraform root module (single source of truth)
+│   ├── main.tf            # Module composition — calls all modules
+│   ├── variables.tf       # All variable definitions (values come from Terragrunt)
+│   └── outputs.tf         # All outputs
+├── live/                  # Terragrunt environment configurations
+│   ├── terragrunt.hcl     # Root config — remote state and common settings (DRY)
+│   ├── dev/
+│   │   └── terragrunt.hcl # Dev-specific inputs only
+│   ├── staging/
+│   │   └── terragrunt.hcl # Staging-specific inputs only
+│   └── prod/
+│       └── terragrunt.hcl # Prod-specific inputs only
+├── modules/
+│   ├── alb/               # Application Load Balancer, Target Groups, and Security Groups
+│   ├── ecs-cluster/       # Core ECS Cluster with Container Insights
+│   ├── ecs-service/       # Fargate Service, Task Definitions, and Container configurations
+│   ├── iam/               # Task Execution and Task Roles for ECS permissions
+│   └── network/           # High-availability VPC, Subnets, NAT Gateways, and Route Tables
+├── bootstrap/             # S3 + DynamoDB for Terraform remote state
+└── environments/          # (Legacy) Per-environment Terraform configs — replaced by live/
 ```
 
 ## Modules Overview
@@ -62,44 +72,28 @@ The workspace is split into **Environments** and **Modules** to maximize code re
 | **Provider `default_tags`** | `Environment` and `ManagedBy` tags are applied at the provider level — no duplication in individual resources. |
 | **Configurable log retention** | Dev defaults to 7 days, staging to 14, prod to 30 — set via `log_retention_days` variable. |
 | **Versioned modules** | Each module pins `required_version` and `required_providers` via `versions.tf` to prevent silent breaking changes. |
-| **Remote state (S3)** | Backend config is present in each environment's `backend.tf` — uncomment and configure before team use. |
+| **Terragrunt DRY** | All environment duplication eliminated — each env is a single `terragrunt.hcl` with input values only. Backend config is generated automatically by the root `terragrunt.hcl`. |
 
 ## Getting Started
 
 ### Prerequisites
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= v1.5.0
+- [Terragrunt](https://terragrunt.gruntwork.io/docs/getting-started/install/) >= v0.50.0
 - [AWS CLI](https://aws.amazon.com/cli/) configured with required permissions
 
-### Remote State Setup (Recommended Before Team Use)
-
-Before enabling the S3 backend in `backend.tf`, create the required AWS resources:
+### Quick Start
 
 ```bash
-# Create S3 bucket for state
-aws s3api create-bucket --bucket YOUR-TERRAFORM-STATE-BUCKET --region us-east-1
+# 1. Bootstrap remote state (first time only)
+cd bootstrap && terraform init && terraform apply && cd ..
 
-# Enable versioning
-aws s3api put-bucket-versioning \
-  --bucket YOUR-TERRAFORM-STATE-BUCKET \
-  --versioning-configuration Status=Enabled
-
-# Enable encryption
-aws s3api put-bucket-encryption \
-  --bucket YOUR-TERRAFORM-STATE-BUCKET \
-  --server-side-encryption-configuration \
-  '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-
-# Create DynamoDB table for state locking
-aws dynamodb create-table \
-  --table-name terraform-lock-table \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region us-east-1
+# 2. Deploy an environment
+cd live/dev
+terragrunt init
+terragrunt plan
+terragrunt apply
 ```
-
-Then uncomment the `backend "s3"` block in each environment's `backend.tf` and run `terraform init`.
 
 For deployment, scaling, teardown, and other operational procedures, see [RUNBOOK.md](RUNBOOK.md).
 
@@ -245,7 +239,7 @@ You provision EC2 instances that register as ECS Container Instances. ECS schedu
 
 **Additional Terraform required for EC2 mode:**
 ```hcl
-# You would need to add to environments/<env>/main.tf:
+# You would need to add to infrastructure/main.tf:
 resource "aws_autoscaling_group" "ecs" { ... }
 resource "aws_launch_template" "ecs" { ... }
 resource "aws_ecs_capacity_provider" "ec2" { ... }
@@ -334,7 +328,7 @@ Each Terraform module works like a **function call**. The environment file is th
 
 | Programming concept | Terraform equivalent |
 |---|---|
-| Function call | `module "network" { ... }` in `environments/<env>/main.tf` |
+| Function call | `module "network" { ... }` in `infrastructure/main.tf` |
 | Arguments | Key-value pairs inside the module block (e.g., `vpc_cidr = var.vpc_cidr`) |
 | Parameters | `modules/<name>/variables.tf` — what the module accepts |
 | Function body | `modules/<name>/main.tf` — what it actually creates |
@@ -346,7 +340,10 @@ Each Terraform module works like a **function call**. The environment file is th
 Always read in this order:
 
 ```
-environments/<env>/main.tf      ← Start here (the caller)
+live/<env>/terragrunt.hcl       ← Start here (environment-specific values)
+        │
+        ▼
+infrastructure/main.tf          ← The caller — module composition
         │
         ▼
 modules/<name>/variables.tf     ← What inputs does it accept?
@@ -360,18 +357,18 @@ modules/<name>/outputs.tf       ← What does it return to the caller?
 
 ### Entry point
 
-The entry point is always an **environment directory** (e.g., `environments/dev/main.tf`). It calls all modules and wires them together by passing outputs from one module as inputs to the next.
+The entry point is `infrastructure/main.tf`, which calls all modules and wires them together. Each environment's `live/<env>/terragrunt.hcl` provides the input values.
 
 ### Example: Tracing a value through the network module
 
 Follow `vpc_cidr` from definition to usage:
 
 ```
-var.vpc_cidr = "10.0.0.0/16"                     # defined in environments/dev/variables.tf
+vpc_cidr = "10.0.0.0/16"                          # defined in live/dev/terragrunt.hcl inputs
         │
         ▼
 module "network" {
-  vpc_cidr = var.vpc_cidr                         # passed as input (environments/dev/main.tf)
+  vpc_cidr = var.vpc_cidr                         # passed as input (infrastructure/main.tf)
 }
         │
         ▼
@@ -389,14 +386,14 @@ output "vpc_id" {
         │
         ▼
 module "alb" {
-  vpc_id = module.network.vpc_id                  # consumed by the ALB module (environments/dev/main.tf)
+  vpc_id = module.network.vpc_id                  # consumed by the ALB module (infrastructure/main.tf)
 }
 ```
 
 ### How modules connect
 
 ```
-environments/dev/main.tf
+infrastructure/main.tf
     │
     ├── module "network"        → creates VPC, subnets
     │       outputs: vpc_id, public_subnets, private_subnets

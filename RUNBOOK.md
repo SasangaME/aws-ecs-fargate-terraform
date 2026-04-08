@@ -6,37 +6,57 @@ For architecture, design decisions, and how the codebase works, see [README.md](
 
 ---
 
+## Prerequisites
+
+Install [Terragrunt](https://terragrunt.gruntwork.io/docs/getting-started/install/):
+
+```bash
+# macOS
+brew install terragrunt
+
+# Verify installation
+terragrunt --version
+```
+
+---
+
 ## 1. Initial Deployment (New Environment)
 
 To spin up a new environment (e.g., `dev`):
 
-1. **Navigate to the environment directory:**
+1. **Bootstrap remote state** (first time only):
    ```bash
-   cd environments/dev
+   cd bootstrap
+   terraform init && terraform apply
    ```
 
-2. **Copy and configure variables:**
+2. **Navigate to the environment directory:**
    ```bash
-   cp terraform.tfvars.example terraform.tfvars
-   # Edit terraform.tfvars with your values
+   cd live/dev
    ```
 
-3. **Initialize the workspace:**
-   ```bash
-   terraform init
-   ```
+3. **Review the environment inputs:**
+   Open `terragrunt.hcl` and verify the inputs (VPC CIDR, subnets, etc.) are correct for your deployment.
 
-4. **Review the execution plan:**
-   Always run a plan to see exactly what AWS resources will be created.
-   Verify the ARNs of any Load Balancers or VPC IDs are correct.
+4. **Initialize and review the execution plan:**
    ```bash
-   terraform plan -out=tfplan
+   terragrunt init
+   terragrunt plan
    ```
 
 5. **Apply the changes:**
    ```bash
-   terraform apply "tfplan"
+   terragrunt apply
    ```
+
+### Deploy All Environments at Once
+
+From the `live/` directory, Terragrunt can deploy all environments in parallel:
+
+```bash
+cd live
+terragrunt run-all apply
+```
 
 ---
 
@@ -44,9 +64,9 @@ To spin up a new environment (e.g., `dev`):
 
 When you have a new Docker image version or tag (e.g., from `v1.0` to `v1.2`):
 
-1. Update the `container_image` variable in your `terraform.tfvars`.
-2. Run `terraform plan` to verify that only the Task Definition and Service are being updated.
-3. Run `terraform apply`. ECS will perform a **rolling update** automatically by spawning new tasks before shutting down old ones.
+1. Update the `container_image` input in `live/<env>/terragrunt.hcl`.
+2. Run `terragrunt plan` to verify that only the Task Definition and Service are being updated.
+3. Run `terragrunt apply`. ECS will perform a **rolling update** automatically by spawning new tasks before shutting down old ones.
 
 ---
 
@@ -54,9 +74,9 @@ When you have a new Docker image version or tag (e.g., from `v1.0` to `v1.2`):
 
 If you need to handle more traffic:
 
-1. Go to `environments/<env>/terraform.tfvars`.
-2. Update `desired_count` (e.g., from `2` to `5`).
-3. Run `terraform plan` and `terraform apply`. ECS Fargate will immediately begin provisioning the additional tasks.
+1. Open `live/<env>/terragrunt.hcl`.
+2. Add or update `desired_count` in the `inputs` block (e.g., from `2` to `5`).
+3. Run `terragrunt plan` and `terragrunt apply`. ECS Fargate will immediately begin provisioning the additional tasks.
 
 **Emergency scaling** (skip Terraform for immediate effect):
 ```bash
@@ -69,22 +89,22 @@ aws ecs update-service --cluster <env>-fargate-cluster \
 
 ## 4. Managing the `environment` Variable
 
-The `environment` variable is used to prefix resource names and tag items (e.g., `dev-ecs-task-role`). There are several ways to provide or override this value:
+The `environment` variable is used to prefix resource names and tag items (e.g., `dev-ecs-task-role`). With Terragrunt, this is set in each environment's `terragrunt.hcl` inputs block:
 
-- **Folder-specific Defaults**: Each environment folder (`environments/dev`, `environments/prod`, etc.) already has a default value defined in its `variables.tf`.
-- **Using `.tfvars` file (Recommended)**: Create or edit `terraform.tfvars` within the environment directory:
-  ```hcl
+```hcl
+# live/dev/terragrunt.hcl
+inputs = {
   environment = "dev"
-  ```
-- **Command Line override**:
-  ```bash
-  terraform apply -var="environment=dev"
-  ```
-- **Environment Variable**:
-  ```bash
-  export TF_VAR_environment="dev"
-  terraform apply
-  ```
+  # ...
+}
+```
+
+You can still override via the command line if needed:
+
+```bash
+cd live/dev
+terragrunt apply -var="environment=dev-hotfix"
+```
 
 ---
 
@@ -92,11 +112,17 @@ The `environment` variable is used to prefix resource names and tag items (e.g.,
 
 To completely remove an environment and stop all AWS costs:
 ```bash
-cd environments/<env>
-terraform destroy
+cd live/<env>
+terragrunt destroy
 ```
 
-Before running `terraform destroy` in production:
+To tear down all environments:
+```bash
+cd live
+terragrunt run-all destroy
+```
+
+Before running `terragrunt destroy` in production:
 1. Confirm there are no active users or dependent services.
 2. Take a final backup of any application data (ECS tasks are stateless, but verify).
 3. Notify the team — this removes the VPC, ALB, NAT Gateway, and all ECS resources.
@@ -163,11 +189,12 @@ aws elbv2 describe-target-health --target-group-arn <target-group-arn>
 
 ### Terraform state lock errors
 
-If a previous `terraform apply` was interrupted:
+If a previous `terragrunt apply` was interrupted:
 
 ```bash
 # Check who holds the lock
-terraform force-unlock <LOCK_ID>
+cd live/<env>
+terragrunt force-unlock <LOCK_ID>
 ```
 
 > Only use `force-unlock` if you're certain no other apply is running.
