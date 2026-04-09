@@ -6,27 +6,9 @@ An industry-standard, modular Terraform project designed to provision a highly a
 
 This project implements a secure, highly-available architecture across multiple Availability Zones. ECS Fargate Tasks run in private subnets, meaning they are completely hidden from the public internet. They receive inbound user traffic exclusively through an Application Load Balancer (ALB) and route outbound requests (e.g., pulling images from Docker/ECR) through a NAT Gateway.
 
-```mermaid
-graph TD
-    Internet((Internet Users)) -->|HTTP/HTTPS| IGW[Internet Gateway]
-
-    subgraph "VPC (10.0.0.0/16)"
-        IGW --> ALB[Application Load Balancer]
-        IGW --> NAT[NAT Gateways]
-
-        subgraph "Public Subnets (us-east-1a, 1b)"
-            ALB
-            NAT
-        end
-
-        ALB -->|Dynamic Ports| Tasks[ECS Fargate Tasks]
-        Tasks -.->|Outbound Internet| NAT
-
-        subgraph "Private Subnets (us-east-1a, 1b)"
-            Tasks
-        end
-    end
-```
+<p align="center">
+  <img src="docs/architecture.svg" alt="AWS ECS Fargate Architecture Diagram" width="850"/>
+</p>
 
 ## Directory Structure
 
