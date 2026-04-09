@@ -41,6 +41,7 @@ module "alb" {
   environment    = var.environment
   vpc_id         = module.network.vpc_id
   public_subnets = module.network.public_subnets
+  domain_name    = var.domain_name
 }
 
 module "iam" {

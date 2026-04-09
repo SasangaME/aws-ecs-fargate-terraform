@@ -17,3 +17,12 @@ output "ecs_execution_role_arn" {
 output "service_name" {
   value = module.ecs_service.service_name
 }
+
+output "acm_certificate_arn" {
+  value = module.alb.acm_certificate_arn
+}
+
+output "acm_domain_validation_options" {
+  description = "Add these DNS records to validate the ACM certificate"
+  value       = module.alb.acm_domain_validation_options
+}

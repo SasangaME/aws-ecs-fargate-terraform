@@ -44,6 +44,53 @@ resource "aws_lb_listener" "http" {
   protocol          = "HTTP"
 
   default_action {
+    type = var.domain_name != "" ? "redirect" : "fixed-response"
+
+    dynamic "redirect" {
+      for_each = var.domain_name != "" ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+
+    dynamic "fixed_response" {
+      for_each = var.domain_name != "" ? [] : [1]
+      content {
+        content_type = "text/plain"
+        message_body = "Fixed response content - Infrastructure is ready but no service attached yet."
+        status_code  = "200"
+      }
+    }
+  }
+}
+
+# --- ACM Certificate (created only when domain_name is provided) ---
+resource "aws_acm_certificate" "main" {
+  count             = var.domain_name != "" ? 1 : 0
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name = "${var.environment}-cert"
+  }
+}
+
+# --- HTTPS Listener (created only when domain_name is provided) ---
+resource "aws_lb_listener" "https" {
+  count             = var.domain_name != "" ? 1 : 0
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = aws_acm_certificate.main[0].arn
+
+  default_action {
     type = "fixed-response"
 
     fixed_response {

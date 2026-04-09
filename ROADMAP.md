@@ -4,7 +4,7 @@ Tracked improvements required before this infrastructure is production-grade. It
 
 ## Critical
 
-- [ ] **HTTPS/TLS on ALB** — Add ACM certificate and HTTPS listener (port 443), redirect HTTP to HTTPS
+- [x] **HTTPS/TLS on ALB** — Add ACM certificate and HTTPS listener (port 443), redirect HTTP to HTTPS
 - [ ] **Route53 DNS** — Add hosted zone and alias records pointing to the ALB
 - [ ] **CloudWatch Alarms** — Alarms for unhealthy targets, task count drift, high CPU/memory, NAT errors
 - [ ] **SNS Notifications** — SNS topic for alarm delivery to ops team (email, Slack, PagerDuty)

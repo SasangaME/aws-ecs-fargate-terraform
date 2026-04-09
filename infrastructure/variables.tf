@@ -81,3 +81,9 @@ variable "listener_rule_priority" {
   type        = number
   default     = 100
 }
+
+variable "domain_name" {
+  description = "Domain name for ACM certificate and HTTPS listener. Leave empty to use HTTP only."
+  type        = string
+  default     = ""
+}

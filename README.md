@@ -60,7 +60,7 @@ The workspace is split into **Infrastructure** (shared Terraform root module), *
 ## Modules Overview
 
 - **`network/`**: Constructs a robust VPC framework. It provisions 2 public subnets for the load balancer and 2 private subnets for your Fargate compute. Supports a `single_nat_gateway` flag to reduce NAT costs in non-production environments.
-- **`alb/`**: Sets up the Application Load Balancer mapped directly to the public subnets. This serves as the single point of entry for your application.
+- **`alb/`**: Sets up the Application Load Balancer mapped directly to the public subnets. This serves as the single point of entry for your application. Supports optional HTTPS/TLS via ACM — when a `domain_name` is provided, the module creates an ACM certificate (DNS-validated), an HTTPS listener on port 443 with a TLS 1.3 policy, and redirects all HTTP traffic (port 80) to HTTPS.
 - **`ecs-cluster/`**: Configures the underlying Amazon ECS Cluster namespace with CloudWatch Container Insights enabled out of the box for deep observability.
 - **`ecs-service/`**: Defines the actual Docker container bindings, Fargate configuration (vCPU, Memory), and mounts the service to the Target Group of the ALB. Supports configurable log retention and listener rule priority.
 - **`iam/`**: Manages the execution role (required to pull Docker images) and the task role (required for the application itself to trigger AWS APIs).
@@ -74,6 +74,7 @@ The workspace is split into **Infrastructure** (shared Terraform root module), *
 | **Configurable log retention** | Dev defaults to 7 days, staging to 14, prod to 30 — set via `log_retention_days` variable. |
 | **Versioned modules** | Each module pins `required_version` and `required_providers` via `versions.tf` to prevent silent breaking changes. |
 | **Terragrunt DRY** | All environment duplication eliminated — each env is a single `terragrunt.hcl` with input values only. Backend config is generated automatically by the root `terragrunt.hcl`. |
+| **Optional HTTPS/TLS** | Set `domain_name` to enable ACM certificate + HTTPS listener with TLS 1.3. HTTP automatically redirects to HTTPS. Leave empty for HTTP-only (default). |
 
 ## Getting Started
 
@@ -111,6 +112,7 @@ For deployment, scaling, teardown, and other operational procedures, see [RUNBOO
 | `memory` | `512` | `512` | `1024` | Fargate memory (MB) |
 | `log_retention_days` | `7` | `14` | `30` | CloudWatch log retention |
 | `listener_rule_priority` | `100` | `100` | `100` | ALB listener rule priority |
+| `domain_name` | `""` | `""` | `""` | Domain for ACM cert & HTTPS (empty = HTTP only) |
 
 ## Cost Estimation
 
