@@ -32,6 +32,8 @@ graph TD
 
 The workspace is split into **Infrastructure** (shared Terraform root module), **Live** (Terragrunt environment configs), and **Modules** (reusable infrastructure components).
 
+> **Why `live/` and not `environments/`?** The `live/` naming is an industry convention popularised by [Gruntwork](https://gruntwork.io/) (the creators of Terragrunt). It signifies "what is actually deployed" — live infrastructure state — as opposed to reusable module code. Anyone familiar with Terragrunt will recognise this pattern immediately.
+
 ```text
 .
 ├── infrastructure/        # Shared Terraform root module (single source of truth)
@@ -52,8 +54,7 @@ The workspace is split into **Infrastructure** (shared Terraform root module), *
 │   ├── ecs-service/       # Fargate Service, Task Definitions, and Container configurations
 │   ├── iam/               # Task Execution and Task Roles for ECS permissions
 │   └── network/           # High-availability VPC, Subnets, NAT Gateways, and Route Tables
-├── bootstrap/             # S3 + DynamoDB for Terraform remote state
-└── environments/          # (Legacy) Per-environment Terraform configs — replaced by live/
+└── bootstrap/             # S3 + DynamoDB for Terraform remote state
 ```
 
 ## Modules Overview

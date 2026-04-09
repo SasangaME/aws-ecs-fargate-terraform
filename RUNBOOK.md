@@ -153,8 +153,8 @@ The ALB target group performs health checks against your container. To check tar
 
 ```bash
 # Get the target group ARN from Terraform output
-cd environments/<env>
-terraform output
+cd live/<env>
+terragrunt output
 
 # Check target health
 aws elbv2 describe-target-health --target-group-arn <target-group-arn>
